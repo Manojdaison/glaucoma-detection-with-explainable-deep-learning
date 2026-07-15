@@ -1,0 +1,204 @@
+════════════════════════════════════════════════════════════════════════════════
+ GLAUCOMA DETECTION FRAMEWORK — COMPLETE SETUP & EXECUTION GUIDE
+ PhD-Level Research Framework | Manoj | VIT Chennai | M.Sc. Data Science
+════════════════════════════════════════════════════════════════════════════════
+
+OVERVIEW
+────────
+This framework trains 3 MobileNetV2 models on retinal fundus images:
+  1. Full Image Model   — entire fundus image
+  2. Optic Disc (OD)    — centre region (radius ≤ 33px)
+  3. Peripapillary (PP) — RNFL zone (33px < r ≤ 67px)
+
+It computes Grad-CAM heatmaps and our novel RCS (Region Contribution Score)
+metric, then validates RCS against expert Cup-to-Disc Ratio (ExpCDR).
+
+Expected total training time: 6–9 hours on CPU.
+
+════════════════════════════════════════════════════════════════════════════════
+PREREQUISITES
+════════════════════════════════════════════════════════════════════════════════
+
+  - Python 3.9 or 3.10 (recommended)
+  - Windows 10/11 (instructions below use Windows paths)
+  - 8 GB RAM minimum (16 GB recommended)
+  - ~5 GB free disk space
+  - ACRIMA.zip dataset (place in the project folder)
+
+════════════════════════════════════════════════════════════════════════════════
+ONE-TIME SETUP
+════════════════════════════════════════════════════════════════════════════════
+
+STEP 1 — Open the project folder in VS Code
+   File → Open Folder → select glaucoma_phd/
+   Open integrated terminal: Ctrl+` (backtick)
+
+STEP 2 — Create virtual environment
+   python -m venv venv
+
+STEP 3 — Activate virtual environment
+   Windows PowerShell:  venv\Scripts\Activate.ps1
+   Windows CMD:         venv\Scripts\activate.bat
+   You should see (venv) prefix in your terminal.
+
+   If PowerShell blocks execution:
+     Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+     Then re-run Activate.ps1
+
+STEP 4 — Install dependencies (5–10 minutes)
+   pip install -r requirements.txt
+
+════════════════════════════════════════════════════════════════════════════════
+DATA PREPARATION
+════════════════════════════════════════════════════════════════════════════════
+
+STEP 5 — Place ACRIMA.zip in the project root (same folder as train.py)
+
+STEP 6 — Run data preparation
+   python train.py --prepare_only --zip_path ACRIMA.zip
+
+   What this does:
+   - Extracts ACRIMA.zip
+   - Filenames containing "_g_" → data/glaucoma/ (396 images)
+   - Remaining images           → data/normal/   (309 images)
+
+   Expected output:
+   [DATA] Sorted 705 images
+   [DATA] Normal: 309 | Glaucoma: 396 | Total: 705
+
+   If your ACRIMA.zip has a different structure, manually place images:
+   - Glaucoma images → data/glaucoma/
+   - Normal images   → data/normal/
+
+════════════════════════════════════════════════════════════════════════════════
+TRAINING (6–9 HOURS ON CPU)
+════════════════════════════════════════════════════════════════════════════════
+
+STEP 7 — Start full training pipeline
+   python train.py --data_dir data/
+
+   What happens automatically:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ Phase A: Region Cropping (~15 min)                          │
+   │   - Detects optic disc via green channel brightest blob     │
+   │   - Crops OD region → data_od/ (705 images)                │
+   │   - Crops PP annular region → data_pp/ (705 images)        │
+   │                                                             │
+   │ Phase B: Train Full Image Model (~2-3 hours)                │
+   │   - Phase 1: LR=1e-3, frozen backbone, 20 epochs           │
+   │   - Phase 2: LR=1e-5, unfreeze last 30 layers, 20 epochs   │
+   │   - Saves: models/fullimage_model.h5                        │
+   │                                                             │
+   │ Phase C: Train OD Model (~2-3 hours)                        │
+   │   - Same architecture on optic disc crops                   │
+   │   - Saves: models/od_model.h5                              │
+   │                                                             │
+   │ Phase D: Train PP Model (~2-3 hours)                        │
+   │   - Same architecture on peripapillary crops                │
+   │   - Saves: models/pp_model.h5                              │
+   │                                                             │
+   │ Phase E: Evaluation (auto-runs after training)              │
+   │   - Computes all metrics + generates all figures            │
+   │   - Computes RCS scores for all images                      │
+   │   - Correlates RCS with ExpCDR (if ACRIMA.csv present)     │
+   └─────────────────────────────────────────────────────────────┘
+
+   You can safely leave the terminal and come back — progress is logged.
+   If interrupted, re-run the same command. Already-trained models are loaded.
+
+════════════════════════════════════════════════════════════════════════════════
+LAUNCH DASHBOARD
+════════════════════════════════════════════════════════════════════════════════
+
+STEP 8 — Launch the Streamlit dashboard
+   streamlit run app.py
+
+   Opens automatically at: http://localhost:8501
+
+   Dashboard sections:
+   1. Overview      — project summary, metrics, pipeline
+   2. Dataset       — distribution charts, sample images
+   3. Architecture  — model details, training config
+   4. Results       — ROC curves, confusion matrices, metrics
+   5. Diagnosis     — upload a fundus image for real-time prediction
+   6. Paper Guide   — abstract template, equations, journal list
+
+════════════════════════════════════════════════════════════════════════════════
+EXPECTED OUTPUTS
+════════════════════════════════════════════════════════════════════════════════
+
+Trained Models:
+  models/fullimage_model.h5
+  models/od_model.h5
+  models/pp_model.h5
+
+Publication Figures (300 dpi, paste directly into paper):
+  outputs/plots/combined_roc_curves.png
+  outputs/plots/model_comparison_bar.png
+  outputs/plots/rcs_boxplots.png
+  outputs/plots/cdr_rcs_scatter.png
+  outputs/plots/fullimage_model_training_curves.png
+  outputs/plots/fullimage_model_confusion_matrix.png
+  outputs/plots/od_model_confusion_matrix.png
+  outputs/plots/pp_model_confusion_matrix.png
+
+Paper Tables (CSV):
+  outputs/reports/model_comparison_table.csv
+  outputs/rcs/rcs_fullimage.csv
+  outputs/rcs/rcs_summary.csv
+  outputs/reports/evaluation_report.txt
+  outputs/reports/cdr_correlation_report.txt
+
+════════════════════════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+════════════════════════════════════════════════════════════════════════════════
+
+ERROR: "No module named tensorflow"
+  → Run: pip install -r requirements.txt
+  → Ensure (venv) is active in terminal
+
+ERROR: "ACRIMA.zip not found"
+  → Place ACRIMA.zip in the glaucoma_phd/ root folder
+  → Re-run: python train.py --prepare_only --zip_path ACRIMA.zip
+
+ERROR: "No images found in data/glaucoma/"
+  → Manually place glaucoma images in data/glaucoma/
+  → Manually place normal images in data/normal/
+
+ERROR: "OOM / Memory Error" during training
+  → Open config.py, change BATCH_SIZE = 16 to BATCH_SIZE = 8
+  → Re-run training
+
+ERROR: "streamlit: command not found"
+  → Ensure venv is active
+  → Run: pip install streamlit>=1.28.0
+
+ERROR: Model loads but gives wrong predictions
+  → This is normal if threshold is set to 0.5
+  → The dashboard uses Youden's J optimal threshold automatically
+
+WARNING: "Could not load ACRIMA.csv"
+  → Place ACRIMA.csv in the data/ folder for CDR correlation analysis
+  → Training and evaluation still work without it
+
+ERROR: PowerShell execution policy
+  → Run: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+  → Then activate venv again
+
+════════════════════════════════════════════════════════════════════════════════
+FINAL CHECKLIST
+════════════════════════════════════════════════════════════════════════════════
+
+Before submitting / publishing:
+  [ ] All 3 models trained (check models/ folder for .h5 files)
+  [ ] Evaluation report generated (outputs/reports/evaluation_report.txt)
+  [ ] ROC curves generated (outputs/plots/combined_roc_curves.png)
+  [ ] RCS scores computed (outputs/rcs/rcs_fullimage.csv)
+  [ ] CDR correlation done (outputs/reports/cdr_correlation_report.txt)
+  [ ] Dashboard runs without errors (streamlit run app.py)
+  [ ] All figures are 300 dpi (check file sizes — should be >500KB each)
+  [ ] model_comparison_table.csv ready for paper Table 1
+
+Good luck with your research, Manoj! 🎓
+
+════════════════════════════════════════════════════════════════════════════════
